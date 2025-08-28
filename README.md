@@ -23,7 +23,6 @@ This library provides:
 ### IDs
 - `Id` - Base class for strongly typed IDs
 - `ProviderId` - Provider-specific ID
-- `OrderId` - Order-specific ID
 
 ### Service
 - `ServiceTag` - Canonical enum of available car services
@@ -38,19 +37,19 @@ Add the dependency to your `pom.xml`:
 
 ```xml
 <dependency>
-    <groupId>com.car.marketplace</groupId>
+    <groupId>com.carmarketplace</groupId>
     <artifactId>common-domain</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```
 
-## Build
+## Build & Test
 
 Requirements:
 - Java 21
 - Maven 3.8+
 
-To build:
+To build and run tests:
 ```bash
 mvn clean install
 ```
