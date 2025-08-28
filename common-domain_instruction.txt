@@ -1,0 +1,132 @@
+# Background: Car Services Marketplace Application
+
+We are building a cloud-ready microservice-based **Car Services Marketplace**.
+
+## Core Business Idea
+- **Service Providers (Car Mechanics/Businesses)**: They register their businesses and list services they offer (oil change, tire change, brake repair, etc.). They provide details like name, phone, address, service tags, photos, operating hours, and exact location.
+- **Customers (Vehicle Owners)**: They visit the website, share their location, and see nearby car services within a 10-mile radius (default, configurable). Results are displayed in a grid UI with distance, rating, services offered, and booking options.
+- **Orders**: Customers can create bookings with service providers.
+- **Payments**: Customers can create and confirm payments for services through integrated payment flows.
+- **Gateway & Auth**: Requests go through a Spring Cloud Gateway. Authentication is handled via Keycloak (OIDC), with JWT passed to backend services.
+- **Frontend**: React + Vite app that fetches services from the gateway and renders them in a grid with filtering/search.
+- **Datastores**: Postgres (with PostGIS for geo), Redis (cache), MinIO/S3 for media.
+- **Messaging**: Kafka (Redpanda locally) for async communication, with an outbox pattern in each service.
+- **Observability**: OpenTelemetry, Prometheus, Grafana, Loki, Tempo.
+- **Infra**: Docker Compose (local), Helm (K8s), Terraform (AWS).
+
+## Services Overview
+- **accounts**: Manages providers (registration, updates, geo search) and customer accounts.
+- **orders**: Manages booking lifecycle (create, confirm, cancel).
+- **payments**: Handles payment intents, captures, and status updates.
+- **gateway**: Routes, authentication, rate limiting.
+- **web**: React frontend (UI grid of nearby providers).
+
+---
+
+# Where `common-domain` fits in
+
+`common-domain` is a **shared, framework-free Java library** containing **core domain primitives** used across all services.  
+It provides a **single source of truth** for fundamental concepts such as geo coordinates, money, IDs, service tags, validation, and error handling.  
+
+This ensures:
+- **Consistency**: All services handle geo, money, IDs, etc. the same way.
+- **Safety**: Strong types prevent mistakes (e.g., mixing currencies or invalid lat/lon).
+- **Reusability**: Services don’t duplicate primitive definitions.
+- **Framework Independence**: No Spring/JPA/HTTP dependencies; usable anywhere (services, tests, tools).
+
+It is **the foundation of the domain model** for services like `accounts`, `orders`, and `payments`.
+
+---
+
+# Instructions for Building `common-domain`
+
+## Purpose
+- Provide **validated, immutable value objects** (geo, money, contact, ids).
+- Provide **canonical enums** (e.g., service tags).
+- Provide **validation helpers** and **error model**.
+- Remain **framework-free**, only pure Java.
+- Serve as a dependency to all microservices.
+
+## Scope (what goes inside)
+- **Geo**: `GeoPoint` (lat/lon with validation and distance calc), `RadiusMi` (search radius).
+- **Money**: `Money` (amount + currency with arithmetic), `CurrencyCode` (ISO wrapper).
+- **Contact/Web**: `PhoneNumber`, `UrlString`.
+- **Provider**: `ServiceTag` enum (canonical list of services).
+- **IDs**: Strongly typed ID wrappers (e.g., `ProviderId` around UUID).
+- **Validation**: Small guard methods for null/blank/empty checks.
+- **DomainError**: Lightweight error representation for domain operations.
+
+## Non-Goals (what should NOT go here)
+- No persistence (no JPA annotations, no repositories).
+- No HTTP (no DTOs, controllers).
+- No messaging schemas (these belong in `common-messaging`).
+- No service-specific logic (only universal primitives).
+
+## How Services Use It
+1. Add dependency to their build file.
+2. Use shared primitives instead of ad-hoc types:
+   - Replace raw lat/lon doubles with `GeoPoint`.
+   - Replace `BigDecimal + string` for money with `Money + CurrencyCode`.
+   - Replace freeform strings for provider services with `ServiceTag`.
+   - Replace UUID strings with strongly typed IDs.
+3. At **boundaries**:
+   - Controllers convert DTO fields ↔ domain primitives.
+   - DB adapters map primitives to DB columns.
+   - Messaging adapters map primitives to scalars for events.
+   - UI never consumes primitives directly—only DTOs from services.
+4. Domain methods may return or throw errors. When structured, use `DomainError` and map it to HTTP status in controllers.
+
+## Design Principles
+- **Framework-free**: zero Spring dependencies.
+- **Immutable**: primitives should not change state after creation.
+- **Fail fast**: invalid inputs are rejected immediately in constructors.
+- **Minimal**: only widely shared concepts go here.
+- **SemVer**: follow semantic versioning (patch = fixes, minor = new non-breaking, major = breaking).
+
+## Versioning & Release Process
+- Start at v1.0.0.
+- Publish via Maven (local or registry).
+- Services reference it by version.
+- Changes go through PR review, unit tests, and CI/CD.
+- Deprecate old APIs instead of deleting.
+
+## Acceptance Criteria
+- Builds successfully with Maven on Java 21.
+- No runtime dependencies besides the JDK.
+- Unit tests exist and pass for all primitives.
+- README documents usage, build, and integration.
+- Artifact can be installed locally and consumed by services.
+
+---
+
+# Delivery Plan (Associate Developer)
+
+### Day 1
+- Create module structure (`libs/common-domain`).
+- Implement core primitives (geo, money, contact, service tags, ids).
+- Write unit tests for validation & happy paths.
+- Write README with build/test instructions.
+
+### Day 2
+- Integrate into `accounts` service (DTO → domain mapping for GeoPoint & ServiceTag).
+- Verify build & tests pass end-to-end.
+- Cut release `1.0.0`.
+- Write usage notes for service teams.
+
+---
+
+# Risks & Mitigation
+- **Overreach**: don’t add service-specific logic here → keep tight scope.
+- **Breaking changes**: downstream breakage → follow SemVer, deprecate before removing.
+- **Framework creep**: adding Spring/JPA → reject in review, enforce framework-free rule.
+
+---
+
+# Documentation to Produce
+- **README.md**: What it is, how to build, how to consume.
+- **CHANGELOG.md**: Start at v1.0.0.
+- **Usage notes**: In platform wiki, with examples of DTO → domain → DB mapping (described in words).
+
+---
+
+# End of Instructions
