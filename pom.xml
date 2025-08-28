@@ -15,7 +15,7 @@
         <repository>
             <id>github</id>
             <name>GitHub BishalAd2053 Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/ BishalAd2053/common-domain </url>
+            <url>https://maven.pkg.github.com/BishalAd2053/common-domain </url>
         </repository>
     </distributionManagement>
     <dependencies>
